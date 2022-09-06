@@ -4,22 +4,18 @@ import 'package:get/get.dart';
 import 'package:jedi_001/screens/calendar_page.dart';
 import 'package:jedi_001/screens/chat_page.dart';
 import 'package:jedi_001/screens/profile_page.dart';
+import 'package:logger/logger.dart';
 
 import 'firebase_options.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
-  // await initializeDefault();
 
   runApp(const Jedi());
 }
 
-Future<void> initializeDefault() async {
-  FirebaseApp app = await Firebase.initializeApp(
-  );
-  // print('Initialized default app $app');
-}
+  var logger = Logger();
 
 class Jedi extends StatelessWidget {
   const Jedi({Key? key}) : super(key: key);

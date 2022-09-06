@@ -1,0 +1,46 @@
+{
+  "project_info": {
+    "project_number": "275879210239",
+    "project_id": "jedi-001",
+    "storage_bucket": "jedi-001.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:275879210239:android:143d894a79dae9670df0ca",
+        "android_client_info": {
+          "package_name": "com.example.jedi_001"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "275879210239-3it3itaipuc10c947b740l91geatulqc.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCwA4fvPP1S1X2ZLjKVMqcs4yAg1W9RAMs"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "275879210239-3it3itaipuc10c947b740l91geatulqc.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "275879210239-2mnpji7tt71nv7dunpmud1op70tcomgj.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.jedi001"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
