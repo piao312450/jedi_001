@@ -3,54 +3,59 @@ import 'dart:convert';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
 import 'package:jedi_001/screens/login_page.dart';
 import 'package:jedi_001/screens/unauthorized_page.dart';
+import 'package:jedi_001/structure/getx_controller/jedi_user_controller.dart';
+import 'package:jedi_001/structure/jedi_user.dart';
+
+import '../main.dart';
 
 class ProfilePage extends StatelessWidget {
   const ProfilePage({Key? key}) : super(key: key);
 
-
   @override
   Widget build(BuildContext context) {
+    final controller = Get.put(JediUserController());
+
     return Scaffold(
-      body: StreamBuilder(
-        stream: FirebaseAuth.instance.authStateChanges(),
-        builder: (BuildContext context, AsyncSnapshot<User?> snapshot) {
-          if (snapshot.data == null) {
-            return const LoginPage();
-          } else {
-            assert(snapshot.data!.email != null);
-            return Profile(userID: snapshot.data!.email!);
-          }
-        },
+      body: Center(
+        child: Column(
+          children: [
+            GetBuilder<JediUserController>(builder: (_) {
+              assert(controller.jediUser != null);
+              return Container(
+                  width: Get.width*0.9,
+                  height: 70,
+                  alignment: Alignment.centerLeft,
+                  decoration: BoxDecoration(
+                    border: Border.all(width: 1, color: Colors.black)
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceAround,
+                    children: [
+                      Container(
+                        width: 40,
+                        height:40,
+                        decoration: const BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: Colors.orange
+                        ),
+                      ),
+                      Text(controller.jediUser!.name ?? "이름이 null"),
+                      ElevatedButton(
+                        child: const Text('로그 아웃'),
+                        onPressed: () {
+                          FirebaseAuth.instance.signOut();
+
+                        },
+                      ),
+                    ],
+                  ));
+            }),
+          ],
+        ),
       ),
     );
   }
 }
-
-class Profile extends StatelessWidget {
-  const Profile({Key? key, required this.userID}) : super(key: key);
-  final String userID;
-
-  @override
-  Widget build(BuildContext context) {
-    final user = FirebaseFirestore.instance.collection('users').doc(userID);
-
-    return Scaffold(
-      body: Center(child: Column(
-        children: [
-          FutureBuilder(
-              future: user.get().then((value) => value.data()!['name']),
-              builder: (c, s){
-            return Text(s.data.toString());
-          }),
-          ElevatedButton(
-            child: Text('sign out'),
-            onPressed: () {FirebaseAuth.instance.signOut();},
-          ),
-        ],
-      ),),
-    );
-  }
-}
-
