@@ -1,27 +1,18 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+
 class JediUser {
-  String? userID;
-  String? name;
-  String? phoneNumber;
-  List<String> friend = []; //userID = email 로 저장, 접근
-  List<String> contact = [];
-  bool isContactSync;
+  String userID;
+  String name;
 
-  JediUser({
-    required this.userID,
-    required this.name,
-    required this.phoneNumber,
-    required this.friend,
-    required this.contact,
-    required this.isContactSync,
-  });
+  JediUser({required this.userID, required this.name});
 
-  static JediUser fromMap(Map userMap) {
+  static Future<JediUser> fromUserID(String userID) async {
+    var v = await FirebaseFirestore.instance.collection('users').doc(userID).get();
+    assert(v.data() != null);
+    String name = v.data()!['name'];
     return JediUser(
-        userID: userMap['userID'],
-        name: userMap['name'],
-        phoneNumber: userMap['phoneNumber'],
-        friend: userMap['friend'].map<String>((d) => d.toString()).toList() ?? [],
-        contact: userMap['contact'].map<String>((d) => d.toString()).toList() ?? [],
-        isContactSync: userMap['isContactSync']);
+      userID: userID,
+      name: name
+    );
   }
 }

@@ -15,8 +15,7 @@ class SignUpPage extends StatefulWidget {
 
 class _SignUpPageState extends State<SignUpPage> {
   final formKey = GlobalKey<FormState>();
-  final TextEditingController _userPNController =
-      TextEditingController(); //전화번호(phone number)
+  final TextEditingController _userPNController = TextEditingController(); //전화번호(phone number)
   late String _userName;
   late String _userID;
   late String _userPW;
@@ -143,17 +142,16 @@ class _SignUpPageState extends State<SignUpPage> {
         ButtonTheme(
           height: 50,
           child: ElevatedButton(
-              onPressed: isValidPhoneNumber ? _authenticatePhoneNumber : null,
-              child: const Text('인증하기')),
+              onPressed: isValidPhoneNumber ? _authenticatePhoneNumber : null, child: const Text('인증하기')),
         )
       ],
     );
   }
 
-  Widget _signInButton() {
+  Widget _signUpButton() {
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 10),
-      child: ElevatedButton(onPressed: _signIn, child: const Text("회원가입")),
+      child: ElevatedButton(onPressed: _signUp, child: const Text("회원가입")),
     );
   }
 
@@ -184,34 +182,28 @@ class _SignUpPageState extends State<SignUpPage> {
         codeAutoRetrievalTimeout: (s) {});
   }
 
-  void _signIn() async {
+  void _signUp() async {
     assert(formKey.currentState != null);
     if (formKey.currentState!.validate()) {
-      formKey.currentState!.save(); //입력한 정보가 다 유효(valid)하면 입력값을 변수에 저장!
+      formKey.currentState!.save(); //입력한 정보가 다 유효(valid)한 경우에만 입력값을 변수에 저장!
       try {
-        logger.d('$_userID & $_userPW');
-        await FirebaseAuth.instance
-            .createUserWithEmailAndPassword(email: _userID, password: _userPW)
-            .then((v) {
+        await FirebaseAuth.instance.createUserWithEmailAndPassword(email: _userID, password: _userPW).then((v) {
           assert(v.user != null);
           assert(v.user!.email != null);
-          Get.off(const LoginPage());
+          Get.off(() => const LoginPage());
           return v;
         });
-        final CollectionReference users =
-            FirebaseFirestore.instance.collection('users');
-        users
-            .doc(_userID)
-            .set({'name': _userName, 'phoneNumber': _userPhoneNumber});
-
-
+        final CollectionReference users = FirebaseFirestore.instance.collection('users');
+        users.doc(_userID).set(
+            {'name': _userName, 'phoneNumber': _userPhoneNumber, 'friend': [], 'contact': [], 'isContactSync': false});
+        users.doc(_userID).collection('band').doc('친구').set({'name': '친구', 'member': []});
       } on FirebaseAuthException catch (e) {
+        //계정 생성 또는 계정 정보 초기화 실패!
         if (e.code == 'weak-password') {
-          print('the password provided is too weak');
+          logger.d('비밀번호가 너무 단순합니다! 다시 만드시죠');
         } else if (e.code == 'email-already-in-use') {
-          print('The account already exists for that email.');
+          logger.d('이미 사용중인 이메일 주소입니다만...?');
         } else {
-          print('11111');
           print(e.code);
         }
       } catch (e) {
@@ -232,7 +224,7 @@ class _SignUpPageState extends State<SignUpPage> {
           _userIDForm(),
           _userPWForm(),
           _userPhoneNumberForm(),
-          _signInButton(),
+          _signUpButton(),
           _goBackButton()
         ],
       ),

@@ -73,7 +73,7 @@ class _LoginPageState extends State<LoginPage> {
         password: _userPWController.text,
       );
       logger.d("로그인 성공");
-      // Get.offAll(() => const SignUpPage());
+
     } on FirebaseAuthException catch (e) {
       logger.e(e);
       String message = '';
