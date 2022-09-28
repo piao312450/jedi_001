@@ -57,23 +57,28 @@ class _LoginPageState extends State<LoginPage> {
   }
 
   Widget _signUpButton() {
-    return TextButton(onPressed: () {
-      Get.to(() => const SignUpPage());
-    }, child: const Text('회원가입'));
+    return TextButton(
+        onPressed: () {
+          Get.to(() => const SignUpPage());
+        },
+        child: const Text('회원가입'));
   }
 
   _login() async {
     //키보드 숨기기
     FocusScope.of(context).requestFocus(FocusNode());
-
+    if(FirebaseAuth.instance.currentUser != null) {
+      logger.d('이미 로그인 됨');
+      return;
+    }
     // Firebase 사용자 인증, 사용자 등록
     try {
       await FirebaseAuth.instance.signInWithEmailAndPassword(
         email: _userIDController.text,
         password: _userPWController.text,
-      );
+      ).then((value) => print(value));
+      logger.d(FirebaseAuth.instance.currentUser!.email);
       logger.d("로그인 성공");
-
     } on FirebaseAuthException catch (e) {
       logger.e(e);
       String message = '';
@@ -86,12 +91,6 @@ class _LoginPageState extends State<LoginPage> {
         message = '이메일을 확인하세요.';
       }
       logger.d(message);
-      /*final snackBar = SnackBar(
-          content: Text(message),
-          backgroundColor: Colors.deepOrange,
-      );
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
-      */
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -102,20 +101,13 @@ class _LoginPageState extends State<LoginPage> {
     }
   }
 
-
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            _userIDForm(),
-            _userPWForm(),
-            _submitButton(),
-            _signUpButton()
-          ],
+          children: [_userIDForm(), _userPWForm(), _submitButton(), _signUpButton()],
         ),
       ),
     );

@@ -17,7 +17,7 @@ class _SignUpPageState extends State<SignUpPage> {
   final formKey = GlobalKey<FormState>();
   final TextEditingController _userPNController = TextEditingController(); //전화번호(phone number)
   late String _userName;
-  late String _userID;
+  late String _userEmail;
   late String _userPW;
   late String _userPhoneNumber;
   bool isValidPhoneNumber = false;
@@ -50,7 +50,7 @@ class _SignUpPageState extends State<SignUpPage> {
       margin: const EdgeInsets.symmetric(horizontal: 30, vertical: 10),
       child: TextFormField(
         onSaved: (v) {
-          _userID = v!;
+          _userEmail = v!;
         },
         validator: (v) {
           assert(v != null);
@@ -187,27 +187,37 @@ class _SignUpPageState extends State<SignUpPage> {
     if (formKey.currentState!.validate()) {
       formKey.currentState!.save(); //입력한 정보가 다 유효(valid)한 경우에만 입력값을 변수에 저장!
       try {
-        await FirebaseAuth.instance.createUserWithEmailAndPassword(email: _userID, password: _userPW).then((v) {
+        UserCredential newUser =
+            await FirebaseAuth.instance.createUserWithEmailAndPassword(email: _userEmail, password: _userPW).then((v) {
           assert(v.user != null);
           assert(v.user!.email != null);
           Get.off(() => const LoginPage());
           return v;
         });
-        final CollectionReference users = FirebaseFirestore.instance.collection('users');
-        users.doc(_userID).set(
-            {'name': _userName, 'phoneNumber': _userPhoneNumber, 'friend': [], 'contact': [], 'isContactSync': false});
-        users.doc(_userID).collection('band').doc('친구').set({'name': '친구', 'member': []});
+        assert(newUser.user != null);
+        final DocumentReference user = FirebaseFirestore.instance.collection('users').doc(newUser.user!.uid);
+        user.set({
+          'userID': newUser.user!.uid,
+          'userEmail': _userEmail,
+          'name': _userName,
+          'phoneNumber': _userPhoneNumber,
+          'friend': [],
+          'potentialFriend': {}, //{'p1@gm.com' : 0} 식으로 이메일 : SocialStatus 저장
+          'contact': [],
+          'isContactSync': false
+        });
+        DocumentReference d = user.collection('band').doc();
+        d.set({'bandID': d.id, 'name': '친구', 'member': []});
       } on FirebaseAuthException catch (e) {
-        //계정 생성 또는 계정 정보 초기화 실패!
         if (e.code == 'weak-password') {
           logger.d('비밀번호가 너무 단순합니다! 다시 만드시죠');
         } else if (e.code == 'email-already-in-use') {
           logger.d('이미 사용중인 이메일 주소입니다만...?');
         } else {
-          print(e.code);
+          logger.d(e.code);
         }
       } catch (e) {
-        print('끝');
+        logger.d('끝');
       }
     }
   }

@@ -130,15 +130,19 @@ class CalendarPage extends StatelessWidget {
         return Container(
           alignment: Alignment.topCenter,
           color: _.selectedDay.isAtSameMomentAs(DateTime(dt.year, dt.month, day)) ? Colors.grey : Colors.white,
-          child: Text(
-            '${dt.day}',
-            style: TextStyle(
-                fontSize: 12,
-                color: _.selectedDay.isAtSameMomentAs(dt)
-                    ? Colors.white
-                    : dt.month != _.displayedDate.month
-                        ? Colors.grey
-                        : Colors.black),
+          child: Column(
+            children: [
+              Text(
+                '${dt.day}',
+                style: TextStyle(
+                    fontSize: 12,
+                    color: _.selectedDay.isAtSameMomentAs(dt)
+                        ? Colors.white
+                        : dt.month != _.displayedDate.month
+                            ? Colors.grey
+                            : Colors.black),
+              ),
+            ],
           ),
         );
       }),
@@ -193,8 +197,8 @@ class CalendarPage extends StatelessWidget {
                         ? null
                         : () {
                             Get.back();
-                            Schedule s = Schedule(title: scheduleName, allDay: true, start: dt);
-                            _scheduleCtrl.saveSchedule(s);
+                            // Schedule s = Schedule(title: scheduleName, allDay: true, start: dt);
+                            // _scheduleCtrl.saveSchedule(s);
                           },
                     icon: const Icon(
                       Icons.check,
@@ -266,6 +270,7 @@ class CalendarPage extends StatelessWidget {
   }
 
   List<Widget> drawSchedule(DateTime dt, int i) {
+    return [Container()];
     //dt는 displayedDate, i는 몇번째 주인
     int day = 0;
 
@@ -275,7 +280,7 @@ class CalendarPage extends StatelessWidget {
       day = 7 * i + j + 1 + firstWeekday - DateTime(dt.year, dt.month, 1).weekday;
       dt = DateTime(dt.year, dt.month, day);
       try {
-        numberOfScheduleForOneWeek += scheduleCtrl.everyScheduleMap[dt.dateInString]!.length;
+        numberOfScheduleForOneWeek += scheduleCtrl.myCalendar[dt.dateInString]!.length;
       } catch (e) {}
     }
 

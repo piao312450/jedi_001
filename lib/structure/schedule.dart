@@ -1,12 +1,31 @@
+import 'package:jedi_001/structure/band.dart';
+
 class Schedule {
+  String userID;
+  String scheduleID;
   String title;
-  bool allDay = true;
   DateTime start;
-  DateTime? end;
+  DateTime end;
+  bool allDay = true;
+  Band? shareWith;
 
-  Schedule({required this.title, required this.allDay, required this.start, this.end});
+  Schedule(
+      {required this.userID,
+      required this.scheduleID,
+      required this.title,
+      required this.allDay,
+      required this.start,
+      required this.end,
+      required this.shareWith});
 
-  static Schedule fromMap(Map<String, dynamic> m) {
-    return Schedule(title: m['title'], allDay: m['allDay'], start: DateTime.fromMillisecondsSinceEpoch(m['start'].seconds));
+  factory Schedule.fromMap(Map<String, dynamic> m) {
+    return Schedule(
+        title: m['title'],
+        allDay: m['allDay'],
+        start: DateTime.fromMillisecondsSinceEpoch(m['start'].seconds),
+        scheduleID: '',
+        userID: '',
+        end: DateTime.fromMillisecondsSinceEpoch(m['start'].seconds),
+        shareWith: m['shareWith']);
   }
 }

@@ -1,13 +1,16 @@
+import 'dart:typed_data';
 import 'package:jedi_001/structure/band.dart';
 import 'package:jedi_001/structure/jedi_user.dart';
 
 import '../main.dart';
 
 class MyJediUser {
-  String? userID;
-  String? name;
-  String? phoneNumber;
+  String userID;
+  String name;
+  String phoneNumber;
+  Uint8List? profilePicInUInt8List;
   List<JediUser> friend = []; //userID = email 로 저장, 접근
+  List<JediUser> potentialFriend =[];
   List<Band> band = [];
   List<String> contact = [];
   bool isContactSync;
@@ -16,25 +19,25 @@ class MyJediUser {
     required this.userID,
     required this.name,
     required this.phoneNumber,
+    required this.profilePicInUInt8List,
     required this.friend,
+    required this.potentialFriend,
     required this.band,
     required this.contact,
     required this.isContactSync,
   });
 
-  static Future<MyJediUser> fromMap(Map userMap) async {
-    List<JediUser> l = [];
-    await userMap['friend'].map((d) async {
-      l.add(await JediUser.fromUserID(d));
-    });
-
+  factory MyJediUser.fromMap(Map<String, dynamic> myJediUserInMap) {
+    logger.d('fromMap');
     return MyJediUser(
-        userID: userMap['userID'],
-        name: userMap['name'],
-        phoneNumber: userMap['phoneNumber'],
-        friend: l,
-        band: userMap['band'],
-        contact: userMap['contact'].map<String>((d) => d.toString()).toList() ?? [],
-        isContactSync: userMap['isContactSync']);
+        userID: myJediUserInMap['userID'],
+        name: myJediUserInMap['name'],
+        phoneNumber: myJediUserInMap['phoneNumber'],
+        profilePicInUInt8List: myJediUserInMap['profilePicInUInt8List'],
+        friend: myJediUserInMap['friend'],
+        potentialFriend: myJediUserInMap['potentialFriend'],
+        band: myJediUserInMap['band'],
+        contact: myJediUserInMap['contact'].map<String>((d) => d.toString()).toList() ?? [],
+        isContactSync: myJediUserInMap['isContactSync']);
   }
 }
