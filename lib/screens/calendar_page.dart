@@ -5,24 +5,38 @@ import 'package:flutter/rendering.dart';
 import 'package:flutter_vibrate/flutter_vibrate.dart';
 import 'package:get/get.dart';
 import 'package:jedi_001/structure/getx_controller/calendar_controller.dart';
+import 'package:jedi_001/structure/getx_controller/my_jedi_user_controller.dart';
 import 'package:jedi_001/structure/getx_controller/preference_controller.dart';
 import 'package:jedi_001/structure/getx_controller/schedule_controller.dart';
+import 'package:jedi_001/structure/my_jedi_user.dart';
 import 'package:jedi_001/widget/calendar_scrollPhysics.dart';
 import 'package:jedi_001/widget/datetime_extension.dart';
 
+import '../main.dart';
+import '../structure/band.dart';
 import '../structure/schedule.dart';
+import '../widget/select_band_bottom_sheet.dart';
+
+final preferenceCtrl = Get.put(PreferenceController());
+final myJediUserCtrl = Get.put(MyJediUserController());
+final calendarCtrl = Get.put(CalendarController());
+final scheduleCtrl = Get.put(ScheduleController());
+
+List<String> weekday = const ['일', '월', '화', '수', '목', '금', '토', '일'];
 
 class CalendarPage extends StatelessWidget {
   CalendarPage({Key? key}) : super(key: key);
-
+  late BuildContext c;
   @override
   Widget build(BuildContext context) {
+    c = context;
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: Colors.orange,
         elevation: 0,
         bottom: mondayToSunday(),
         title: yearAndMonth(),
+        centerTitle: false,
+        actions: [toggleBetweenMeAndSocial()],
       ),
       body: Center(
         child: Column(
@@ -41,16 +55,13 @@ class CalendarPage extends StatelessWidget {
     );
   }
 
-  final preferenceCtrl = Get.put(PreferenceController());
-  final calendarCtrl = Get.put(CalendarController());
-  final scheduleCtrl = Get.put(ScheduleController());
   final PageController _pageController = PageController(initialPage: 100);
 
-  final int firstWeekday = Get.find<PreferenceController>().firstWeekday; //일요일 0 ~ 토요일 6
-  final Axis scrollDirection = Get.find<PreferenceController>().monthViewScrollDirection;
+  final int firstWeekday = preferenceCtrl.firstWeekday; //일요일 0 ~ 토요일 6
+  final Axis scrollDirection = preferenceCtrl.monthViewScrollDirection;
 
-  DateTime displayedDate = Get.find<CalendarController>().displayedDate;
-  DateTime selectedDay = Get.find<CalendarController>().selectedDay;
+  DateTime displayedDate = calendarCtrl.displayedDate;
+  DateTime selectedDay = calendarCtrl.selectedDay;
 
   // currentMonth 가 몇개의 주로 이루어져있는지 계산. 4~6의 값을 가짐.
   int numberOfWeek(DateTime dt) {
@@ -73,8 +84,21 @@ class CalendarPage extends StatelessWidget {
     );
   }
 
+  Widget toggleBetweenMeAndSocial() {
+    // return Container();
+    return GetBuilder<CalendarController>(builder: (_) {
+      return ToggleButtons(
+        children: const [Icon(Icons.person), Icon(Icons.people)],
+        onPressed: (int i) {
+          _.isMyCalendar = i == 0 ? true : false;
+        },
+        isSelected: [_.isMyCalendar, !_.isMyCalendar],
+        renderBorder: false,
+      );
+    });
+  }
+
   PreferredSizeWidget mondayToSunday() {
-    List<String> l = const ['일', '월', '화', '수', '목', '금', '토'];
     return PreferredSize(
       preferredSize: const Size.fromHeight(16),
       child: Container(
@@ -86,8 +110,8 @@ class CalendarPage extends StatelessWidget {
           children: List.generate(
               7,
               (i) => Text(
-                    i + firstWeekday < 7 ? l[i + firstWeekday] : l[i + firstWeekday - 7],
-                    style: TextStyle(fontSize: 12),
+                    i + firstWeekday < 7 ? weekday[i + firstWeekday] : weekday[i + firstWeekday - 7],
+                    style: const TextStyle(fontSize: 12),
                   )),
         ),
       ),
@@ -95,79 +119,132 @@ class CalendarPage extends StatelessWidget {
   }
 
   Widget monthView() {
-    return PageView.builder(
-      controller: _pageController,
-      scrollDirection: scrollDirection,
-      physics: const CustomPageViewScrollPhysics(),
-      itemBuilder: (_, i) {
-        DateTime dt = DateTime(DateTime.now().year, DateTime.now().month - 100 + i); //build 해야할 연월
-        return Column(
-            children: List.generate(
-                6,
-                (i) => Expanded(
-                      child: Stack(
-                          children: <Widget>[
-                                Row(
-                                    children: List.generate(7, (j) {
-                                  return dayBlock(dt, i, j);
-                                })),
-                              ] +
-                              drawSchedule(dt, i)),
-                    )));
-      },
-      onPageChanged: (i) async {
-        calendarCtrl.displayedDate = DateTime(DateTime.now().year, DateTime.now().month - 100 + i);
-      },
-    );
+    DateTime initialDate = DateTime.fromMillisecondsSinceEpoch(calendarCtrl.displayedDate.millisecondsSinceEpoch);
+    return GetBuilder<CalendarController>(builder: (_) {
+      return PageView.builder(
+        controller: _pageController,
+        scrollDirection: scrollDirection,
+        physics: const CustomPageViewScrollPhysics(),
+        itemBuilder: (c, i) {
+          DateTime dt = DateTime(initialDate.year, initialDate.month - 100 + i); //build 해야할 연월
+          return Column(
+              children: List.generate(
+                  6,
+                  (i) => Expanded(
+                        child: Stack(
+                            children: <Widget>[
+                                  Row(
+                                      children: List.generate(7, (j) {
+                                    return dayBlock(dt, i, j);
+                                  })),
+                                ] +
+                                drawSchedule(dt, i)),
+                      )));
+        },
+        onPageChanged: (i) async {
+          print(i);
+          print(initialDate);
+          print(_.displayedDate);
+          _.displayedDate = DateTime(initialDate.year, initialDate.month - 100 + i);
+        },
+      );
+    });
   }
 
   Widget dayBlock(DateTime dt, int i, int j) {
     int day = 7 * i + j + 1 + firstWeekday - DateTime(dt.year, dt.month, 1).weekday;
-    dt = DateTime(dt.year, dt.month, day);
+    DateTime date = DateTime(dt.year, dt.month, day);
     return Expanded(
         child: GestureDetector(
       child: GetBuilder<CalendarController>(builder: (_) {
-        return Container(
-          alignment: Alignment.topCenter,
-          color: _.selectedDay.isAtSameMomentAs(DateTime(dt.year, dt.month, day)) ? Colors.grey : Colors.white,
-          child: Column(
-            children: [
-              Text(
-                '${dt.day}',
-                style: TextStyle(
-                    fontSize: 12,
-                    color: _.selectedDay.isAtSameMomentAs(dt)
-                        ? Colors.white
-                        : dt.month != _.displayedDate.month
-                            ? Colors.grey
-                            : Colors.black),
+        return Stack(
+          children: [
+            Container(
+              alignment: Alignment.topCenter,
+              color: _.selectedDay.isAtSameMomentAs(date) ? Colors.grey : Colors.white,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: <Widget>[
+                  Text(
+                    '${date.day}',
+                    style: const TextStyle(fontSize: 12, color: Colors.black),
+                  ),
+                  // LayoutBuilder(
+                  //   builder: (context, constraints) {
+                  //     return Container(
+                  //       width: constraints.,
+                  //     );
+                  //   }),
+                  ...dayBlock2(_.isMyCalendar
+                      ? [...?_.mySchedule[date.dateInString], ...?_.mySocialSchedule[date.dateInString]]
+                      : [...?_.mySocialSchedule[date.dateInString], ...?_.socialSchedule[date.dateInString]])
+                ],
               ),
-            ],
-          ),
+            ),
+            date.month != dt.month
+                ? Container(
+                    color: Colors.white.withOpacity(0.6),
+                  )
+                : Container()
+          ],
         );
       }),
       onTapDown: (_) {
-        Get.find<CalendarController>().selectedDay = DateTime(dt.year, dt.month, day);
+        calendarCtrl.selectedDay = date;
       },
       onLongPress: () {
-        Get.find<CalendarController>().selectedDay = DateTime(dt.year, dt.month, day);
+        calendarCtrl.selectedDay = date;
         // Vibrate.feedback(FeedbackType.light);
-        Get.bottomSheet(addScheduleBottomSheet(dt),
+        Get.bottomSheet(addScheduleBottomSheet(date),
             enterBottomSheetDuration: const Duration(milliseconds: 150), isScrollControlled: true);
       },
     ));
   }
 
+  List<Widget> dayBlock2(List<Schedule> l) {
+    List<Widget> result = [];
+    for (int i = 0; i < 4; i++) {
+      if (!l.asMap().containsKey(i)) continue;
+      result.add(Container(
+        width: Get.width / 7 - 2.5,
+        // height: 12,
+        color: Theme.of(c).primaryColor,
+        alignment: Alignment.center,
+        margin: const EdgeInsets.symmetric(vertical: 0.8),
+        child: Text(
+          l[i].title,
+          overflow: TextOverflow.fade,
+          softWrap: false,
+          style: const TextStyle(fontSize: 9),
+        ),
+      ));
+    }
+    if (l.length > 4) {
+      result[3] = Row(
+        children: [
+          const SizedBox(width: 5),
+          Text(
+            '+${l.length - 3}',
+            style: const TextStyle(fontSize: 8),
+          ),
+        ],
+      );
+    }
+
+    return result;
+  }
+
   Widget addScheduleBottomSheet(DateTime dt) {
     TextEditingController _textEditingController = TextEditingController();
-    final _scheduleCtrl = Get.put(ScheduleController());
     bool willShare = false;
-    String scheduleName = '';
+    List<Band> shareWith = [myJediUserCtrl.myJediUser.band.singleWhere((e) => e.name == '친구')];
+
+    String title = '';
 
     return StatefulBuilder(builder: (_, setState) {
       return Container(
         width: Get.width,
-        height: Get.height * 0.35,
+        height: Get.height * 0.4,
         padding: const EdgeInsets.symmetric(horizontal: 20),
         color: Colors.yellow[200],
         child: Column(
@@ -193,12 +270,11 @@ class CalendarPage extends StatelessWidget {
                 IconButton(
                     padding: const EdgeInsets.symmetric(vertical: 15),
                     constraints: const BoxConstraints(),
-                    onPressed: scheduleName.isEmpty
+                    onPressed: title.isEmpty
                         ? null
                         : () {
                             Get.back();
-                            // Schedule s = Schedule(title: scheduleName, allDay: true, start: dt);
-                            // _scheduleCtrl.saveSchedule(s);
+                            calendarCtrl.addSchedule(title, dt, willShare ? shareWith : null);
                           },
                     icon: const Icon(
                       Icons.check,
@@ -219,7 +295,7 @@ class CalendarPage extends StatelessWidget {
                             style: const TextStyle(fontSize: 28),
                             onChanged: (s) {
                               setState(() {
-                                scheduleName = s;
+                                title = s;
                               });
                             },
                             decoration: const InputDecoration(
@@ -247,13 +323,51 @@ class CalendarPage extends StatelessWidget {
                     contentPadding: EdgeInsets.zero,
                   ),
                   willShare
-                      ? const ListTile(
+                      ? ListTile(
                           contentPadding: EdgeInsets.zero,
-                          title: Text(
-                            '공유 대상',
+                          title: const Text(
+                            '다음과 공유:',
                             style: TextStyle(fontSize: 22, color: Colors.black54),
                           ),
-                        )
+                          trailing: GestureDetector(
+                            onTap: () async {
+                              shareWith = await Get.bottomSheet(selectBandBottomSheet(shareWith));
+                              setState(() {
+                                if (shareWith.isEmpty) {
+                                  shareWith = [myJediUserCtrl.myJediUser.band.singleWhere((e) => e.name == '친구')];
+                                }
+                                shareWith = shareWith;
+                              });
+                            },
+                            child: Container(
+                              width: Get.width * 0.5,
+                              alignment: Alignment.centerRight,
+                              child: SingleChildScrollView(
+                                scrollDirection: Axis.horizontal,
+                                child: Row(
+                                  children: List.generate(
+                                      shareWith.length,
+                                      (i) => Row(
+                                            children: [
+                                              Container(
+                                                  width: 30,
+                                                  height: 30,
+                                                  alignment: Alignment.centerRight,
+                                                  margin: const EdgeInsets.only(right: 10),
+                                                  decoration:
+                                                      BoxDecoration(shape: BoxShape.circle, color: shareWith[i].color)),
+                                              Text(
+                                                shareWith[i].name,
+                                                style: const TextStyle(fontSize: 20),
+                                              ),
+                                              Text(shareWith.asMap().containsKey(i + 1) ? ', ' : '',
+                                                  style: const TextStyle(fontSize: 20))
+                                            ],
+                                          )),
+                                ),
+                              ),
+                            ),
+                          ))
                       : Container(),
                   // Container(
                   //   width: 50,
@@ -295,21 +409,86 @@ class CalendarPage extends StatelessWidget {
             // padding: EdgeInsets.symmetric(horizontal: 10, vertical: 2),
             height: 15,
             width: Get.width / 7,
-            decoration: BoxDecoration(
-              color: Colors.blue,
-              border: Border.all(color: Colors.white, width: 1)
-            ),
+            decoration: BoxDecoration(color: Colors.blue, border: Border.all(color: Colors.white, width: 1)),
             alignment: Alignment.center,
-            child: Text('$j', style: TextStyle(fontSize: 13),),
+            child: Text(
+              '$j',
+              style: const TextStyle(fontSize: 13),
+            ),
           ));
     });
   }
 
   Widget scheduleView() {
-    return Container(
-      color: Colors.greenAccent,
-      // child: Text('${dt}'),
-      width: Get.width,
-    );
+    return GetBuilder<CalendarController>(builder: (_) {
+      DateTime dt = _.selectedDay;
+      List<Schedule> schedule = _.isMyCalendar
+          ? [...?_.mySchedule[dt.dateInString], ...?_.mySocialSchedule[dt.dateInString]]
+          : [...?_.mySocialSchedule[dt.dateInString], ...?_.socialSchedule[dt.dateInString]];
+
+      return Container(
+        color: Colors.grey[200],
+        padding: const EdgeInsets.only(top: 6, left: 10, right: 10),
+        child: Column(
+          children: [
+            Row(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 8.0),
+                  child: Text(
+                    '${dt.year}년 ${dt.month}월 ${dt.day}일 (${weekday[dt.weekday]})',
+                    style: const TextStyle(fontSize: 16),
+                  ),
+                )
+              ],
+            ),
+            Expanded(
+              child: ListView(
+                children: [
+                      GestureDetector(
+                        child: Container(
+                          child: const Text(
+                            '+ 새로운 이벤트',
+                            style: TextStyle(fontSize: 18),
+                          ),
+                          width: Get.width,
+                          height: 50,
+                          padding: const EdgeInsets.symmetric(horizontal: 10),
+                          margin: const EdgeInsets.symmetric(vertical: 3.5),
+                          decoration:
+                              const BoxDecoration(color: Colors.white, borderRadius: BorderRadius.all(const Radius.circular(7))),
+                          alignment: Alignment.centerLeft,
+                        ),
+                        onTap: () => Get.bottomSheet(addScheduleBottomSheet(dt),
+                            enterBottomSheetDuration: const Duration(milliseconds: 150), isScrollControlled: true),
+                      )
+                    ] +
+                    List.generate(
+                        schedule.length,
+                        (i) => GestureDetector(
+                              child: Container(
+                                child: Text(
+                                  '${schedule[i].title}',
+                                  style: const TextStyle(fontSize: 18),
+                                ),
+                                width: Get.width,
+                                height: 50,
+                                padding: const EdgeInsets.symmetric(horizontal: 10),
+                                margin: const EdgeInsets.symmetric(vertical: 3.5),
+                                decoration: const BoxDecoration(
+                                    color: Colors.white, borderRadius: BorderRadius.all(const Radius.circular(7))),
+                                alignment: Alignment.centerLeft,
+                              ),
+                              onTap: () => Get.bottomSheet(addScheduleBottomSheet(dt),
+                                  enterBottomSheetDuration: const Duration(milliseconds: 150),
+                                  isScrollControlled: true),
+                            )),
+              ),
+            )
+          ],
+        ),
+        width: Get.width,
+      );
+    });
   }
 }

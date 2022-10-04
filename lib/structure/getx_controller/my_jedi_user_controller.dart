@@ -6,6 +6,7 @@ import 'package:get/get.dart';
 import '../../main.dart';
 import '../band.dart';
 import '../my_jedi_user.dart';
+import '../schedule.dart';
 
 enum Update {
   name,
@@ -16,7 +17,8 @@ enum Update {
   deleteBand,
   profilePic,
   addMemberTo,
-  removeMemberFrom
+  removeMemberFrom,
+  add
 }
 
 class MyJediUserController extends GetxController {
@@ -33,7 +35,6 @@ class MyJediUserController extends GetxController {
 
   set myJediUser(MyJediUser myJediUser) {
     _myJediUser = myJediUser;
-    logger.d('myJediuser set');
     update();
   }
 
@@ -52,10 +53,10 @@ class MyJediUserController extends GetxController {
         break;
 
       case Update.potentialFriendUpdate: //d는 [JediUser j, SocialStatus s] 꼴
-        int i = _myJediUser.potentialFriend.indexOf(d[0]);
-        _myJediUser.potentialFriend[i].socialStatus = d[1];
-
-        update();
+        // int i = _myJediUser.potentialFriend.indexOf(d[0]);
+        // _myJediUser.potentialFriend[i].socialStatus = d[1];
+        //
+        // update();
 
         FirebaseFirestore.instance
             .collection('users')
@@ -65,8 +66,8 @@ class MyJediUserController extends GetxController {
         break;
 
       case Update.potentialFriendRemove:
-        _myJediUser.potentialFriend.remove(d);
-        update();
+        // _myJediUser.potentialFriend.remove(d);
+        // update();
 
         FirebaseFirestore.instance
             .collection('users')
@@ -75,19 +76,24 @@ class MyJediUserController extends GetxController {
         break;
 
       case Update.createBand: // List<dynamic>[String name, Color c
-        DocumentReference band = FirebaseFirestore.instance.collection('users').doc(userID).collection('band').doc();
-        await band.set({'bandID': band.id, 'name': d[0], 'color': d[1].value, 'member': []});
+        DocumentReference band = FirebaseFirestore.instance
+            .collection('users')
+            .doc(userID)
+            .collection('band')
+            .doc();
+        await band.set({
+          'bandID': band.id,
+          'name': d[0],
+          'color': d[1].value,
+          'member': []
+        });
 
-        _myJediUser.band.add(Band(
-          bandID: band.id,
-          name: d[0],
-          color: d[1],
-          member: []
-        ));
+        _myJediUser.band
+            .add(Band(bandID: band.id, name: d[0], color: d[1], member: []));
         update();
         break;
 
-      case Update.deleteBand:   //Band 타입 d
+      case Update.deleteBand: //Band 타입 d
         assert(d != null);
         _myJediUser.band.remove(d);
         FirebaseFirestore.instance
@@ -103,11 +109,17 @@ class MyJediUserController extends GetxController {
         _myJediUser.profilePicInUInt8List = d;
         update();
 
-        final ref = FirebaseStorage.instance.ref().child('profile_picture/$userID');
+        final ref =
+            FirebaseStorage.instance.ref().child('profile_picture/$userID');
         await ref.putData(d);
         String s = await ref.getDownloadURL();
-        FirebaseFirestore.instance.collection('users').doc(userID).update({'profilePicUrl': s});
+        FirebaseFirestore.instance
+            .collection('users')
+            .doc(userID)
+            .update({'profilePicUrl': s});
         logger.d(s);
+        break;
+      default:
         break;
     }
   }
@@ -118,7 +130,12 @@ class MyJediUserController extends GetxController {
       case Update.addMemberTo:
         assert(member != null);
         _myJediUser.band.singleWhere((e) => e == b).member.add(member!);
-        FirebaseFirestore.instance.collection('users').doc(_myJediUser.userID).collection('band').doc(b.bandID).update({
+        FirebaseFirestore.instance
+            .collection('users')
+            .doc(_myJediUser.userID)
+            .collection('band')
+            .doc(b.bandID)
+            .update({
           'member': FieldValue.arrayUnion([member])
         });
         update();
@@ -126,7 +143,12 @@ class MyJediUserController extends GetxController {
       case Update.removeMemberFrom:
         assert(member != null);
         _myJediUser.band.singleWhere((e) => e == b).member.remove(member!);
-        FirebaseFirestore.instance.collection('users').doc(_myJediUser.userID).collection('band').doc(b.bandID).update({
+        FirebaseFirestore.instance
+            .collection('users')
+            .doc(_myJediUser.userID)
+            .collection('band')
+            .doc(b.bandID)
+            .update({
           'member': FieldValue.arrayRemove([member])
         });
         update();

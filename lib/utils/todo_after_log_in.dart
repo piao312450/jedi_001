@@ -7,6 +7,7 @@ import 'package:contacts_service/contacts_service.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:flutter/material.dart';
+import 'package:jedi_001/widget/datetime_extension.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:http/http.dart' as http;
 
@@ -23,13 +24,12 @@ final _myJediUserCtrl = Get.put(MyJediUserController());
 final _calendarCtrl = Get.put(CalendarController());
 
 Future<int> fetchUserFromFirebase(String userID) async {
-  logger.d('fetchUserFromFirebase 실행');
+  logger.d('fetchUserFromFirebase');
   // logger.d('_myJediUserCtrl.myJediUser : ${_myJediUserCtrl.myJediUser}');
 
   Map<String, dynamic> myJediUserInMap;
   final user = FirebaseFirestore.instance.collection('users').doc(userID);
-  logger.d(userID);
-  logger.d(user.id);
+
   var v = await user.get();
   assert(v.data() != null);
 
@@ -75,8 +75,6 @@ Future<int> fetchUserFromFirebase(String userID) async {
   }
   myJediUserInMap['friend'] = f; //유저 친구
 
-  logger.d('$myJediUserInMap');
-
   _myJediUserCtrl.myJediUser = MyJediUser.fromMap(myJediUserInMap);
   Get.find<MyJediUserController>().myJediUser = MyJediUser.fromMap(myJediUserInMap); //저장
   // // logger.d('fetchUserFromFirebase 완료');
@@ -89,26 +87,46 @@ Future<int> fetchUserFromFirebase(String userID) async {
 
 void fetchScheduleFromFirebase(String userID) {
   logger.d('fetchScheduleFromFirebase');
-  // FirebaseFirestore.instance.collection('schedules').doc(userID).collection('details').get().then((v) async {
-  //   List details = v.docs.map((e) => e.data()).toList();
-  //   _calendarCtrl.myCalendar = {};
-  //
-  //   if (v.docs.map((e) => e.data()) != null) {
-  //     final Map<String, dynamic> rawScheduleMap = v.data()!;
-  //     List rawScheduleList = rawScheduleMap['schedules']; // Schedule 객체의 정보만 담은 Map
-  //     List<Schedule> loadedSchedules = []; //우리가 원하는 형태!!
-  //
-  //     for (int i = 0; i < rawScheduleList.length; i++) {
-  //       loadedSchedules.add(Schedule.fromMap(rawScheduleList[i]));
-  //     }
-  //     logger.i('loadAndSave_Schedule_DataFromFirebase;\nloadedSchedules: $loadedSchedules');
-  //     await _calendarCtrl.setSchedule(loadedSchedules);
-  //   }
-  // });
+  FirebaseFirestore.instance.collection('schedules').doc(userID).collection('mySchedule').get().then((v) {
+    Map<String, List<Schedule>> m = {};
+    for (var e in v.docs) {
+      String d = DateTime.parse(e.data()['start'].toDate().toString()).dateInString;
+      m[d] ??= [];
+      m[d]!.add(Schedule(
+          userID: userID,
+          scheduleID: e.data()['scheduleID'],
+          title: e.data()['title'],
+          allDay: e.data()['allDay'],
+          start: DateTime.parse(e.data()['start'].toDate().toString()),
+          end: DateTime.parse(e.data()['end'].toDate().toString()),
+          shareWith: e.data()['shareWith']?.map((e) => Band.fromBandID(userID, e))));
+    }
+    _calendarCtrl.mySchedule = m;
+  });
+
+  FirebaseFirestore.instance.collection('schedules').doc(userID).collection('mySocialSchedule').get().then((v) {
+    Map<String, List<Schedule>> m = {};
+    for (var e in v.docs) {
+      String d = DateTime.parse(e.data()['start'].toDate().toString()).dateInString;
+      m[d] ??= [];
+      m[d]!.add(Schedule(
+          userID: userID,
+          scheduleID: e.data()['scheduleID'],
+          title: e.data()['title'],
+          allDay: e.data()['allDay'],
+          start: DateTime.parse(e.data()['start'].toDate().toString()),
+          end: DateTime.parse(e.data()['end'].toDate().toString()),
+          shareWith: e.data()['shareWith']?.map((e) => Band.fromBandID(userID, e))));
+    }
+    logger.e(m);
+    _calendarCtrl.mySocialSchedule = m;
+  });
+
+  logger.d('fetchScheduleFromFirebase 완료');
 }
 
 void loadContactIfFirstLogin(String userID) {
-  logger.d('loadContactIfFirstLogin 실행');
+  logger.d('loadContactIfFirstLogin');
   final user = FirebaseFirestore.instance.collection('users').doc(userID);
   user.get().then((v) async {
     assert(v.data() != null);
@@ -138,8 +156,11 @@ Future<void> loadNewPotentialFriend(String userID) async {
   List<String> contact = _myJediUserCtrl.myJediUser.contact;
 
   if (contact.isEmpty) return;
-  for (int i = 0; i <= contact.length ~/ 10; i++) {
-    await users.where('phoneNumber', whereIn: contact.sublist(10 * i, min(10 * i + 9, contact.length))).get().then((data) async {
+  for (int i = 0; i <= (contact.length - 1) ~/ 10; i++) {
+    await users
+        .where('phoneNumber', whereIn: contact.sublist(10 * i, min(10 * i + 9, contact.length - 1)))
+        .get()
+        .then((data) async {
       try {
         List<String> pfl = _myJediUserCtrl.myJediUser.potentialFriend.map<String>((e) => e.userID).toList();
         List<String> fl = _myJediUserCtrl.myJediUser.friend.map<String>((e) => e.userID).toList();

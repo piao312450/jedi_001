@@ -7,7 +7,7 @@ class Schedule {
   DateTime start;
   DateTime end;
   bool allDay = true;
-  Band? shareWith;
+  List<Band>? shareWith;
 
   Schedule(
       {required this.userID,
@@ -27,5 +27,17 @@ class Schedule {
         userID: '',
         end: DateTime.fromMillisecondsSinceEpoch(m['start'].seconds),
         shareWith: m['shareWith']);
+  }
+
+  Map<String, dynamic> toMap() {
+    return {
+      'userID': userID,
+      'scheduleID': scheduleID,
+      'title': title,
+      'start': start,
+      'end': end,
+      'allDay': allDay,
+      'shareWith': shareWith?.map<String>((e) => e.bandID).toList()
+    };
   }
 }

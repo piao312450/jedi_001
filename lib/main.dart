@@ -28,8 +28,14 @@ class Jedi extends StatelessWidget {
     SystemChrome.setPreferredOrientations([
       DeviceOrientation.portraitUp,
     ]);
-    return const GetMaterialApp(
-      home: CheckAccount(),
+    return GetMaterialApp(
+      home: const CheckAccount(),
+      theme: ThemeData(
+        primaryColor: const Color.fromRGBO(166, 208, 184, 1),
+        appBarTheme: const AppBarTheme(
+          color: Color.fromRGBO(166, 208, 184, 1)
+        )
+      ),
       debugShowCheckedModeBanner: false,
     );
   }

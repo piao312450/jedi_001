@@ -8,7 +8,6 @@ import 'package:jedi_001/screens/social_page.dart';
 import 'package:jedi_001/structure/getx_controller/my_jedi_user_controller.dart';
 import 'package:jedi_001/structure/getx_controller/profile_controller.dart';
 import 'package:jedi_001/utils/load_image.dart';
-
 import '../main.dart';
 import '../structure/band.dart';
 import '../widget/my_check_box.dart';
@@ -33,7 +32,7 @@ class ProfilePage extends StatelessWidget {
           actions: [
             IconButton(
                 onPressed: () {
-                  Get.to(const SocialPage(), transition: Transition.rightToLeft);
+                  Get.to(SocialPage(), transition: Transition.rightToLeft);
                 },
                 icon: const Icon(Icons.favorite)),
             IconButton(
@@ -149,7 +148,7 @@ class ProfilePage extends StatelessWidget {
         child: _.myJediUser.friend.isEmpty
             ? _p.selectedBand == null || _p.selectedBand!.name == '친구'
                 ? Container()
-                : ElevatedButton(
+                : TextButton(
                     onPressed: () {
                       _myJediUserCtrl.updateMyJediUser(Update.deleteBand, _p.selectedBand);
                       _p.selectedBand = null;
@@ -187,7 +186,6 @@ class ProfilePage extends StatelessWidget {
                                           _.updateBand(
                                               Update.addMemberTo, _p.selectedBand!, _.myJediUser.friend[i].userID);
                                         }
-                                        logger.i(_p.selectedBand!.member);
                                       },
                                     ),
                               visualDensity: const VisualDensity(vertical: 3),
@@ -196,7 +194,7 @@ class ProfilePage extends StatelessWidget {
                     [
                       _p.selectedBand == null || _p.selectedBand!.name == '친구'
                           ? Container()
-                          : ElevatedButton(
+                          : TextButton(
                               onPressed: () {
                                 _myJediUserCtrl.updateMyJediUser(Update.deleteBand, _p.selectedBand);
                                 _p.selectedBand = null;

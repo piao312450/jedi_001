@@ -28,7 +28,6 @@ class MyJediUser {
   });
 
   factory MyJediUser.fromMap(Map<String, dynamic> myJediUserInMap) {
-    logger.d('fromMap');
     return MyJediUser(
         userID: myJediUserInMap['userID'],
         name: myJediUserInMap['name'],

@@ -9,7 +9,9 @@ import '../structure/jedi_user.dart';
 final _myJediUserCtrl = Get.put(MyJediUserController());
 
 class SocialPage extends StatelessWidget {
-  const SocialPage({Key? key}) : super(key: key);
+  SocialPage({Key? key}) : super(key: key);
+
+  List<JediUser> potentialFriend = _myJediUserCtrl.myJediUser.potentialFriend;
 
   @override
   Widget build(BuildContext context) {
@@ -23,18 +25,40 @@ class SocialPage extends StatelessWidget {
         elevation: 0,
       ),
       body: Center(
-        child: GetBuilder<MyJediUserController>(builder: (_) {
-          return Column(
-            children: [newFriend(_), suggestedFriend(_)],
-          );
-        }),
+        child: StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+            stream: FirebaseFirestore.instance.collection('users').doc(_myJediUserCtrl.myJediUser.userID).snapshots(),
+            builder: (_, s) {
+              logger.i(s.data?.data() ?? 'null');
+              if (s.data == null || s.data!.data() == null) return Container(color: Colors.redAccent,);
+              return FutureBuilder<List>(
+                future: streamToList(s),
+                builder: (_, f) {
+                  if(f.hasData) {
+                    if(f.data!.isEmpty) return Container(color: Colors.grey[200],);
+                    return Column(
+                    children: [newFriend(f), suggestedFriend(f)],
+                  );
+                  } else {
+                    return const CircularProgressIndicator();
+                  }
+                }
+              );
+            }),
       ),
     );
   }
 
-  Widget newFriend(MyJediUserController _) {
+  Future<List<JediUser>> streamToList(AsyncSnapshot<DocumentSnapshot<Map<String, dynamic>>> s) async {
+    List<JediUser> l = [];
+    for(var e in s.data!.data()!['potentialFriend'].keys.toList()) {
+      l.add(await JediUser.fromUserID(userID: e, socialStatus: s.data!.data()!['potentialFriend'][e]));
+    }
+    return l;
+  }
+
+  Widget newFriend(AsyncSnapshot f) {
     List<JediUser> newFriend = [];
-    for (var e in _.myJediUser.potentialFriend) {
+    for (var e in f.data) {
       if (e.socialStatus == SocialStatus.wantMe || e.socialStatus == SocialStatus.isFriend) newFriend.add(e);
     }
     return Column(
@@ -42,21 +66,20 @@ class SocialPage extends StatelessWidget {
         newFriend.isEmpty
             ? Container()
             : Row(
-          children: const [
-            Padding(
-              padding: EdgeInsets.only(left: 10, top: 10),
-              child: Text(
-                '새로운 친구',
-                style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold),
+                children: const [
+                  Padding(
+                    padding: EdgeInsets.only(left: 10, top: 10),
+                    child: Text(
+                      '새로운 친구',
+                      style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold),
+                    ),
+                  )
+                ],
               ),
-            )
-          ],
-        ),
         Column(
           children: List.generate(
               newFriend.length,
-                  (i) =>
-                  SizedBox(
+              (i) => SizedBox(
                     width: Get.width,
                     height: 70,
                     child: newFriend[i].socialStatus == SocialStatus.wantMe
@@ -69,10 +92,12 @@ class SocialPage extends StatelessWidget {
     );
   }
 
-  Widget suggestedFriend(MyJediUserController _) {
+  Widget suggestedFriend(AsyncSnapshot f) {
+    // return Container();
+
     // wantYou 가 포함된 리스트!!
     List<JediUser> suggestedFriend = [];
-    for (var e in _.myJediUser.potentialFriend) {
+    for (var e in f.data) {
       if (e.socialStatus == SocialStatus.notFriend || e.socialStatus == SocialStatus.wantYou) suggestedFriend.add(e);
     }
     return Column(
@@ -196,9 +221,11 @@ class SocialPage extends StatelessWidget {
                   style: TextStyle(fontSize: 13),
                 ),
               ),
-              ElevatedButton(onPressed: () {
-                _myJediUserCtrl.updateMyJediUser(Update.potentialFriendUpdate, [j, SocialStatus.isFriend]);
-              }, child: Text('상대가 수락'))
+              ElevatedButton(
+                  onPressed: () {
+                    _myJediUserCtrl.updateMyJediUser(Update.potentialFriendUpdate, [j, SocialStatus.isFriend]);
+                  },
+                  child: Text('상대가 수락'))
             ],
           ),
         ));
@@ -213,12 +240,8 @@ class SocialPage extends StatelessWidget {
           decoration: BoxDecoration(
               image: DecorationImage(
                   image: j.profilePicInUInt8List != null
-                      ? Image
-                      .memory(j.profilePicInUInt8List!)
-                      .image
-                      : Image
-                      .asset('assets/images/default_profile.jpeg')
-                      .image,
+                      ? Image.memory(j.profilePicInUInt8List!).image
+                      : Image.asset('assets/images/default_profile.jpeg').image,
                   fit: BoxFit.cover),
               shape: BoxShape.circle,
               color: Colors.green)),
@@ -245,13 +268,11 @@ class SocialPage extends StatelessWidget {
     //나에게 친구 요청을 보낸 대상 = j
     //j 의 friend 역시 함께 수정해야한다!
 
-
     String s = _myJediUserCtrl.myJediUser.userID;
     await FirebaseFirestore.instance.collection('users').doc(j.userID).update({'potentialFriend.$s': 3});
     await FirebaseFirestore.instance.collection('users').doc(j.userID).update({
       'friend': FieldValue.arrayUnion([s])
     });
-
 
     _myJediUserCtrl.updateMyJediUser(Update.potentialFriendRemove, j); //potentialFriend 에서 없애고
     _myJediUserCtrl.updateMyJediUser(Update.friendAdd, j); //friend 에 넣는다
@@ -269,82 +290,79 @@ class SocialPage extends StatelessWidget {
   void decideBand(JediUser j) {
     List<Band> selectedBand = [];
 
-    Get.bottomSheet(StatefulBuilder(
-        builder: (context, setState) {
-          return Container(
-            width: Get.width,
-            height: 300,
-            color: Colors.yellow[200],
-            padding: const EdgeInsets.symmetric(horizontal: 20),
-            child: Column(
+    Get.bottomSheet(StatefulBuilder(builder: (context, setState) {
+      return Container(
+        width: Get.width,
+        height: 300,
+        color: Colors.yellow[200],
+        padding: const EdgeInsets.symmetric(horizontal: 20),
+        child: Column(
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    IconButton(
-                        padding: const EdgeInsets.symmetric(vertical: 15),
-                        constraints: const BoxConstraints(),
-                        onPressed: () {
-                          Get.back();
-                        },
-                        icon: const Icon(
-                          Icons.close,
-                          size: 30,
-                        )),
-                    const Text(
-                      '밴드 선택',
-                      style: TextStyle(fontSize: 20),
-                    ),
-                    IconButton(
-                        padding: const EdgeInsets.symmetric(vertical: 15),
-                        constraints: const BoxConstraints(),
-                        onPressed: () {
-                          Get.back();
-                          for(final e in selectedBand) {
-                            _myJediUserCtrl.updateBand(Update.addMemberTo, e, j.userID);
-                          }
-                        },
-                        icon: const Icon(
-                          Icons.check,
-                          size: 30,
-                        ))
-                  ],
+                IconButton(
+                    padding: const EdgeInsets.symmetric(vertical: 15),
+                    constraints: const BoxConstraints(),
+                    onPressed: () {
+                      Get.back();
+                    },
+                    icon: const Icon(
+                      Icons.close,
+                      size: 30,
+                    )),
+                const Text(
+                  '밴드 선택',
+                  style: TextStyle(fontSize: 20),
                 ),
-                Row(
-                  children: List.generate(
-                      _myJediUserCtrl.myJediUser.band.length,
-                          (i) =>
-                          GestureDetector(
-                            child: Container(
-                              width: 60,
-                              height: 60,
-                              alignment: Alignment.center,
-                              child: Text(_myJediUserCtrl.myJediUser.band[i].name),
-                              decoration: BoxDecoration(
-                                color: _myJediUserCtrl.myJediUser.band[i].color,
-                                shape: BoxShape.circle,
-                                border: selectedBand.contains(_myJediUserCtrl.myJediUser.band[i])
-                                    ? Border.all(color: Colors.black, width: 2)
-                                    : null,
-                              ),
-                            ),
-                            onTap: () {
-                              setState(() {
-                                if(selectedBand.contains(_myJediUserCtrl.myJediUser.band[i])){
-                                  selectedBand.remove(_myJediUserCtrl.myJediUser.band[i]);
-                                } else {
-                                  selectedBand.add(_myJediUserCtrl.myJediUser.band[i]);
-                                }
-                              });
-                            },
-                          )),
-                )
+                IconButton(
+                    padding: const EdgeInsets.symmetric(vertical: 15),
+                    constraints: const BoxConstraints(),
+                    onPressed: () {
+                      Get.back();
+                      for (final e in selectedBand) {
+                        _myJediUserCtrl.updateBand(Update.addMemberTo, e, j.userID);
+                      }
+                    },
+                    icon: const Icon(
+                      Icons.check,
+                      size: 30,
+                    ))
               ],
             ),
-          );
-        }
-    ));
+            Row(
+              children: List.generate(
+                  _myJediUserCtrl.myJediUser.band.length,
+                  (i) => GestureDetector(
+                        child: Container(
+                          width: 60,
+                          height: 60,
+                          alignment: Alignment.center,
+                          child: Text(_myJediUserCtrl.myJediUser.band[i].name),
+                          decoration: BoxDecoration(
+                            color: _myJediUserCtrl.myJediUser.band[i].color,
+                            shape: BoxShape.circle,
+                            border: selectedBand.contains(_myJediUserCtrl.myJediUser.band[i])
+                                ? Border.all(color: Colors.black, width: 2)
+                                : null,
+                          ),
+                        ),
+                        onTap: () {
+                          setState(() {
+                            if (selectedBand.contains(_myJediUserCtrl.myJediUser.band[i])) {
+                              selectedBand.remove(_myJediUserCtrl.myJediUser.band[i]);
+                            } else {
+                              selectedBand.add(_myJediUserCtrl.myJediUser.band[i]);
+                            }
+                          });
+                        },
+                      )),
+            )
+          ],
+        ),
+      );
+    }));
   }
 }
 
